@@ -20,6 +20,7 @@ import Auth from '/imports/ui/services/auth';
 import Settings from '/imports/ui/services/settings';
 import Storage from '/imports/ui/services/storage/session';
 import browserInfo from '/imports/utils/browserInfo';
+import Users from '/imports/api/users';
 
 const MEDIA = Meteor.settings.public.media;
 const MEDIA_TAG = MEDIA.mediaTag;
@@ -1392,6 +1393,10 @@ export default class SIPBridge extends BaseAudioBridge {
   }
 
   joinAudio({ isListenOnly, extension, validIceCandidates }, managerCallback) {
+    // this refetch of the username is needed in case of username change since start of the session
+    const { userId } = this.user;
+    this.user.name = Users.findOne({ userId }, { fields: { name: 1 } }).name;
+    this.userData.username = this.user.name; // just to keep it consistent
     const hasFallbackDomain = typeof IPV4_FALLBACK_DOMAIN === 'string' && IPV4_FALLBACK_DOMAIN !== '';
 
     return new Promise((resolve, reject) => {

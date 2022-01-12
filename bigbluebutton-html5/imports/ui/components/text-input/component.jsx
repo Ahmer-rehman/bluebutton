@@ -7,11 +7,13 @@ import Styled from './styles';
 const propTypes = {
   placeholder: PropTypes.string,
   send: PropTypes.func.isRequired,
+  onTextChange: PropTypes.func,
 };
 
 const defaultProps = {
   placeholder: '',
   send: () => logger.warn({ logCode: 'text_input_send_function' }, `Missing`),
+  onTextChange: () => {},
 };
 
 const messages = defineMessages({
@@ -53,6 +55,7 @@ class TextInput extends PureComponent {
       intl,
       maxLength,
       placeholder,
+      onTextChange,
     } = this.props;
 
     const { message } = this.state;
@@ -61,7 +64,10 @@ class TextInput extends PureComponent {
       <Styled.Wrapper>
         <Styled.TextArea
           maxLength={maxLength}
-          onChange={(e) => this.handleOnChange(e)}
+          onChange={(e) => {
+            onTextChange(e);
+            this.handleOnChange(e);
+          }}
           onKeyDown={(e) => this.handleOnKeyDown(e)}
           placeholder={placeholder}
           value={message}

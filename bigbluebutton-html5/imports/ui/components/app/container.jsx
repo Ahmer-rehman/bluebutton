@@ -21,6 +21,8 @@ import {
   layoutDispatch,
 } from '../layout/context';
 
+import Storage from '/imports/ui/services/storage/session';
+
 import {
   getFontSize,
   getBreakoutRooms,
@@ -145,6 +147,12 @@ export default injectIntl(withModalMounter(withTracker(({ intl, baseControls }) 
   Users.find({ userId: Auth.userID, meetingId: Auth.meetingID }).observe({
     removed() {
       endMeeting('403');
+    },
+  });
+
+  Users.find({ userId: Auth.userID, meetingId: Auth.meetingID }).observe({
+    changed(userAfterChange) {
+      Storage.setItem('fullname', userAfterChange.name);
     },
   });
 

@@ -92,6 +92,7 @@ public class ParamsProcessorUtil {
     private boolean webcamsOnlyForModerator;
     private boolean defaultMuteOnStart = false;
     private boolean defaultAllowModsToUnmuteUsers = false;
+    private boolean defaultAllowModsToChangeUsernames = false;
     private boolean defaultKeepEvents = false;
     private Boolean useDefaultLogo;
     private String defaultLogoURL;
@@ -668,6 +669,12 @@ public class ParamsProcessorUtil {
         }
         meeting.setAllowModsToUnmuteUsers(allowModsToUnmuteUsers);
 
+        Boolean allowModsToChangeUsernames = defaultAllowModsToChangeUsernames;
+        if (!StringUtils.isEmpty(params.get(ApiParams.ALLOW_MODS_TO_CHANGE_USERNAMES))) {
+            allowModsToChangeUsernames = Boolean.parseBoolean(params.get(ApiParams.ALLOW_MODS_TO_CHANGE_USERNAMES));
+        }
+        meeting.setAllowModsToChangeUsernames(allowModsToChangeUsernames);
+
         return meeting;
     }
 
@@ -1117,6 +1124,14 @@ public class ParamsProcessorUtil {
 
 	public Boolean getAllowModsToUnmuteUsers() {
 		return defaultAllowModsToUnmuteUsers;
+	}
+
+	public void setAllowModsToChangeUsernames(Boolean value) {
+        defaultAllowModsToChangeUsernames = value;
+	}
+
+	public Boolean getAllowModsToChangeUsernames() {
+		return defaultAllowModsToChangeUsernames;
 	}
 
 	public List<String> decodeIds(String encodeid) {

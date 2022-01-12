@@ -12,6 +12,7 @@ import {
   subscribeToStreamStateChange,
   unsubscribeFromStreamStateChange,
 } from '/imports/ui/services/bbb-webrtc-sfu/stream-state-service';
+import Users from '/imports/api/users';
 import { ACTIONS } from '/imports/ui/components/layout/enums';
 import Settings from '/imports/ui/services/settings';
 
@@ -178,12 +179,15 @@ class VideoListItem extends Component {
       isStreamHealthy,
     } = this.state;
     const {
-      name,
+      userId,
       voiceUser,
       numOfStreams,
       mirrored,
       isFullscreenContext,
     } = this.props;
+    // this refetch of the username is needed in case of username change since start of the session
+    // otherwise preview name would be the old one
+    const { name } = Users.findOne({ userId }, { fields: { name: 1 } });
     const availableActions = this.getAvailableActions();
     const enableVideoMenu = Meteor.settings.public.kurento.enableVideoMenu || false;
     const shouldRenderReconnect = !isStreamHealthy && videoIsReady;

@@ -325,6 +325,7 @@ const getUsersProp = () => {
     {
       fields: {
         'usersProp.allowModsToUnmuteUsers': 1,
+        'usersProp.allowModsToChangeUsernames': 1,
         'usersProp.authenticatedGuest': 1,
       },
     },
@@ -334,6 +335,7 @@ const getUsersProp = () => {
 
   return {
     allowModsToUnmuteUsers: false,
+    allowModsToChangeUsernames: false,
     authenticatedGuest: false,
   };
 };
@@ -378,6 +380,9 @@ const getAvailableActions = (
     && !amISubjectUser
     && !isBreakoutRoom;
 
+  const allowedToChangeUserName = usersProp.allowModsToChangeUsernames
+    && (amIModerator && (!isSubjectUserModerator || amISubjectUser));
+
   const allowedToSetPresenter = amIModerator
     && !subjectUser.presenter
     && !isDialInUser;
@@ -411,6 +416,7 @@ const getAvailableActions = (
     allowedToUnmuteAudio,
     allowedToResetStatus,
     allowedToRemove,
+    allowedToChangeUserName,
     allowedToSetPresenter,
     allowedToPromote,
     allowedToDemote,
@@ -443,6 +449,10 @@ const removeUser = (userId, banUser) => {
   } else {
     makeCall('removeUser', userId, banUser);
   }
+};
+
+const changeUserName = (userId, newUserName, userNameChangedMessage) => {
+  makeCall('changeUserName', userId, newUserName, userNameChangedMessage);
 };
 
 const toggleVoice = (userId) => {
@@ -642,6 +652,7 @@ export default {
   clearAllEmojiStatus,
   assignPresenter,
   removeUser,
+  changeUserName,
   toggleVoice,
   muteAllUsers,
   muteAllExceptPresenter,
