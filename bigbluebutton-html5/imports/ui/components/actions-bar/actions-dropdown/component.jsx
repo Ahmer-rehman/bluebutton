@@ -63,6 +63,14 @@ const intlMessages = defineMessages({
     id: 'app.actionsBar.actionsDropdown.pollBtnDesc',
     description: 'poll menu toggle button description',
   },
+  questionQuizBtnLabel: {
+    id: 'app.actionsBar.actionsDropdown.questionQuizBtnLabel',
+    description: 'ask question menu toggle button label',
+  },
+  questionQuizBtnDesc: {
+    id: 'app.actionsBar.actionsDropdown.questionQuizBtnDesc',
+    description: 'ask question menu toggle button description',
+  },
   takePresenter: {
     id: 'app.actionsBar.actionsDropdown.takePresenter',
     description: 'Label for take presenter role option',
@@ -105,6 +113,7 @@ class ActionsDropdown extends PureComponent {
 
     this.presentationItemId = _.uniqueId('action-item-');
     this.pollId = _.uniqueId('action-item-');
+    this.questionQuizId = _.uniqueId('action-item-');
     this.takePresenterId = _.uniqueId('action-item-');
     this.selectUserRandId = _.uniqueId('action-item-');
 
@@ -134,6 +143,7 @@ class ActionsDropdown extends PureComponent {
       handleTakePresenter,
       isSharingVideo,
       isPollingEnabled,
+      isQuestioningEnabled,
       isSelectRandomUserEnabled,
       stopExternalVideoShare,
       mountModal,
@@ -143,11 +153,11 @@ class ActionsDropdown extends PureComponent {
       setPushLayout,
       showPushLayout,
     } = this.props;
-
     const {
       pollBtnLabel,
       presentationLabel,
       takePresenter,
+      questionQuizBtnLabel,
     } = intlMessages;
 
     const {
@@ -188,6 +198,25 @@ class ActionsDropdown extends PureComponent {
           Session.set('forcePollOpen', true);
         },
       })
+    }
+    if (amIPresenter && isQuestioningEnabled) {
+      actions.push({
+        icon: 'help',
+        dataTest: 'questionQuiz',
+        label: formatMessage(questionQuizBtnLabel),
+        key: this.questionQuizId,
+        onClick: () => {
+          layoutContextDispatch({
+            type: ACTIONS.SET_SIDEBAR_CONTENT_IS_OPEN,
+            value: true,
+          });
+          layoutContextDispatch({
+            type: ACTIONS.SET_SIDEBAR_CONTENT_PANEL,
+            value: PANELS.ASK_QUESTION,
+          });
+          Session.set('forceQuestionQuizOpen', true);
+        },
+      });
     }
 
     if (!amIPresenter) {

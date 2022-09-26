@@ -4,6 +4,7 @@ import Resizable from 're-resizable';
 import { ACTIONS, PANELS } from '../layout/enums';
 import ChatContainer from '/imports/ui/components/chat/container';
 import NotesContainer from '/imports/ui/components/notes/container';
+import QuestionQuizContainer from '/imports/ui/components/question-quiz/container';
 import PollContainer from '/imports/ui/components/poll/container';
 import CaptionsContainer from '/imports/ui/components/captions/container';
 import BreakoutRoomContainer from '/imports/ui/components/breakout-room/container';
@@ -86,7 +87,7 @@ const SidebarContent = (props) => {
 
   const smallSidebar = width < (maxWidth / 2);
   const pollDisplay = sidebarContentPanel === PANELS.POLL ? 'inherit' : 'none';
-
+  const questionQuizDisplay = sidebarContentPanel === PANELS.ASK_QUESTION ? 'inherit' : 'none';
   return (
     <Resizable
       minWidth={minWidth}
@@ -141,9 +142,20 @@ const SidebarContent = (props) => {
       {sidebarContentPanel === PANELS.CAPTIONS && <CaptionsContainer />}
       {sidebarContentPanel === PANELS.BREAKOUT && <BreakoutRoomContainer />}
       {sidebarContentPanel === PANELS.WAITING_USERS && <WaitingUsersPanel />}
-      <Styled.Poll style={{ minWidth, top: '0', display: pollDisplay }} id="pollPanel">
-        <PollContainer smallSidebar={smallSidebar} amIPresenter={amIPresenter} />
-      </Styled.Poll>
+      {
+        sidebarContentPanel === PANELS.POLL && (
+          <Styled.Poll style={{ minWidth, top: '0', display: pollDisplay }} id="pollPanel">
+            <PollContainer smallSidebar={smallSidebar} amIPresenter={amIPresenter} />
+          </Styled.Poll>
+        )
+      }
+      {
+        sidebarContentPanel === PANELS.ASK_QUESTION && (
+          <Styled.Quiz style={{ minWidth, top: '0', display: questionQuizDisplay }} id="questionQuizPanel">
+            <QuestionQuizContainer smallSidebar={smallSidebar} />
+          </Styled.Quiz>
+        )
+      }
     </Resizable>
   );
 };

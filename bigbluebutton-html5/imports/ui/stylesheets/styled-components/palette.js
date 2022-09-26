@@ -77,6 +77,10 @@ const btnMutedBorder = `var(--btn-muted-border, ${colorMutedBackground})`;
 const btnMutedColor = `var(--btn-muted-color, ${colorMuted})`;
 const btnMutedBg = `var(--btn-muted-bg, ${colorMutedBackground})`;
 
+const colorBadgeSuccess = `var(--badge-success, #D1E7DD)`;
+const colorBadgeWarning = `var(--badge-warning, #FFF3CD)`;
+const colorBadgeDanger = `var(--btn-danger, #F8D7DA)`;
+
 const toolbarButtonColor = `var(--toolbar-button-color, ${btnDefaultColor})`;
 const userThumbnailBorder = `var(--user-thumbnail-border, ${colorGrayLight})`;
 const loaderBg = `var(--loader-bg, ${colorGrayDark})`;
@@ -119,6 +123,11 @@ const webcamBackgroundColor = 'var(--webcam-background-color, #001428FF)';
 
 const toastWarningColor = `var(--toast-warning-color, ${colorWhite})`;
 const toastWarningBg = `var(--toast-warning-bg, ${colorWarning})`;
+
+const questioningsuccessLightColor = 'var(--questioning-success-light-color, #eaffe1)'
+const questioningsuccessDarkColor = `var(--questioning-success-dark-color, ${colorSuccess})`
+const questioningsuccessLightColorCode = '#eaffe1'
+const questioningsuccessDarkColorCode = `#008081`
 
 export {
   colorWhite,
@@ -179,6 +188,9 @@ export {
   btnMutedBorder,
   btnMutedColor,
   btnMutedBg,
+  colorBadgeSuccess,
+  colorBadgeDanger,
+  colorBadgeWarning,
   toolbarButtonColor,
   userThumbnailBorder,
   loaderBg,
@@ -210,5 +222,9 @@ export {
   toastErrorBg,
   toastWarningColor,
   toastWarningBg,
+  questioningsuccessLightColor,
+  questioningsuccessDarkColor,
+  questioningsuccessLightColorCode,
+  questioningsuccessDarkColorCode,
   webcamBackgroundColor,
 };

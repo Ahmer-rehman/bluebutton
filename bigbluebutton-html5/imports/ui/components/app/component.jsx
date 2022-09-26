@@ -6,6 +6,7 @@ import Modal from 'react-modal';
 import browserInfo from '/imports/utils/browserInfo';
 import deviceInfo from '/imports/utils/deviceInfo';
 import PollingContainer from '/imports/ui/components/polling/container';
+import QuestioningContainer from '/imports/ui/components/questioning/container';
 import logger from '/imports/startup/client/logger';
 import ActivityCheckContainer from '/imports/ui/components/activity-check/container';
 import UserInfoContainer from '/imports/ui/components/user-info/container';
@@ -108,6 +109,22 @@ const intlMessages = defineMessages({
   pollPublishedLabel: {
     id: 'app.whiteboard.annotations.poll',
     description: 'message displayed when a poll is published',
+  },
+  questionQuizPublishedLabel: {
+    id: 'app.whiteboard.annotations.questionQuiz',
+    description: 'message displayed when a quiz is published',
+  },
+  questionQuizCorrectAnswer: {
+    id: "app.questionQuiz.correctOptionLabel",
+    description: "correct answer selected notification"
+  },
+  questionQuizIncorrectAnswer: {
+    id: "app.questionQuiz.incorrectOptionLabel",
+    description: "correct answer selected notification"
+  },
+  questionQuizUserInfoAnswer: {
+    id: "app.questionQuiz.info.answer",
+    description: "incorrect answer selected notification"
   },
   defaultViewLabel: {
     id: 'app.title.defaultViewLabel',
@@ -284,6 +301,7 @@ class App extends Component {
       notify,
       currentUserEmoji,
       intl,
+      hasPublishedQuestionQuiz,
       mountModal,
       deviceType,
       meetingLayout,
@@ -308,6 +326,8 @@ class App extends Component {
       pushLayoutMeeting,
       layoutContextDispatch,
       mountRandomUserModal,
+      currentUserId,
+      currentQuestionQuiz,
       setPushLayout,
       setMeetingLayout,
     } = this.props;
@@ -452,6 +472,35 @@ class App extends Component {
           ? 'clear_status'
           : 'user',
       );
+    }
+    if (!prevProps.hasPublishedQuestionQuiz && hasPublishedQuestionQuiz) {
+      currentQuestionQuiz.then((res) => {
+        const newQuestionQuiz = res;
+        if (newQuestionQuiz?.responses) {
+          let isUserRespondedToQuiz = false
+          newQuestionQuiz.responses.forEach((response) => {
+            if (response.userId === currentUserId) {
+              isUserRespondedToQuiz = true;
+              if(response.isCorrect)
+              return notify(
+                `${intl.formatMessage(intlMessages.questionQuizPublishedLabel)}. 
+                  ${intl.formatMessage(intlMessages.questionQuizUserInfoAnswer)} ${intl.formatMessage(
+                  intlMessages.questionQuizCorrectAnswer)}!`, 'success', 'polling',
+              );
+              notify(
+                `${intl.formatMessage(intlMessages.questionQuizPublishedLabel)}. 
+              ${intl.formatMessage(intlMessages.questionQuizUserInfoAnswer)} ${intl.formatMessage(
+                  intlMessages.questionQuizIncorrectAnswer)}!`, 'warning', 'polling',
+              );
+            }
+          })
+          !isUserRespondedToQuiz && (
+            notify(
+              intl.formatMessage(intlMessages.questionQuizPublishedLabel), 'info', 'polling',
+            )
+          )
+        }
+      })
     }
 
     if (deviceType === null || prevProps.deviceType !== deviceType) this.throttledDeviceType();
@@ -636,7 +685,6 @@ class App extends Component {
       selectedLayout,
       presentationIsOpen,
     } = this.props;
-
     return (
       <>
         <Notifications />
@@ -683,6 +731,7 @@ class App extends Component {
           <StatusNotifier status="raiseHand" />
           <ManyWebcamsNotifier />
           <PollingContainer />
+          <QuestioningContainer />
           <ModalContainer />
           <PadsSessionsContainer />
           {this.renderActionsBar()}

@@ -34,6 +34,7 @@ import {
 import { withModalMounter, getModal } from '/imports/ui/components/common/modal/service';
 
 import App from './component';
+import { makeCall } from '../../services/api';
 
 const CUSTOM_STYLE_URL = Meteor.settings.public.app.customStyleUrl;
 
@@ -115,6 +116,8 @@ const AppContainer = (props) => {
   && !_.isEqual(prevRandomUser, randomlySelectedUser)
   && randomlySelectedUser.length > 0
   && !isModalOpen;
+  // const currentQuestionQuiz = QuestionQuizs.findOne({})
+  const currentQuestionQuiz = makeCall("getCurrentQuestionQuiz")
 
   const setPushLayout = () => {
     LayoutService.setPushLayout(pushLayout);
@@ -169,6 +172,7 @@ const AppContainer = (props) => {
           shouldShowPresentation,
           mountRandomUserModal,
           isPresenter,
+          currentQuestionQuiz,
         }}
         {...otherProps}
       />
@@ -218,6 +222,16 @@ export default injectIntl(withModalMounter(withTracker(({ intl, baseControls }) 
         layout: 1,
       },
     });
+  const currentMeetingQuiz = Meetings.findOne({ meetingId: Auth.meetingID },
+    {
+      fields: {
+        publishedQuestionQuiz: 1,
+        voiceProp: 1,
+        randomlySelectedUser: 1,
+        layout: 1,
+      },
+    });
+  const { publishedQuestionQuiz } = currentMeetingQuiz
   const {
     randomlySelectedUser,
   } = currentMeeting;
@@ -263,6 +277,7 @@ export default injectIntl(withModalMounter(withTracker(({ intl, baseControls }) 
     isPhone: deviceInfo.isPhone,
     isRTL: document.documentElement.getAttribute('dir') === 'rtl',
     currentUserEmoji: currentUserEmoji(currentUser),
+    hasPublishedQuestionQuiz: publishedQuestionQuiz,
     randomlySelectedUser,
     currentUserId: currentUser?.userId,
     isPresenter,

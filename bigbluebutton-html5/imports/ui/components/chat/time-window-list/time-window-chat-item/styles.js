@@ -104,6 +104,13 @@ const Meta = styled.div`
   align-items: baseline;
 `;
 
+const HeaderAndTime = styled.div`
+  display: flex;
+  flex: 1;
+  flex-flow: row;
+  line-height: 1.35;
+`
+
 const Name = styled.div`
   display: flex;
   min-width: 0;
@@ -197,6 +204,20 @@ const PollMessageChatItem = styled(MessageChatItem)`
   margin-top: ${chatPollMarginSm} !important;
 `;
 
+const QuestionQuizMessageChatItem = styled(MessageChatItem)`
+  flex: 1;
+  margin-top: calc(${lineHeightComputed} / 3);
+  margin-bottom: 0;
+  color: ${colorText};
+  word-wrap: break-word;
+
+  background: ${systemMessageBackgroundColor};
+  border: solid 1px ${colorGrayLighter};
+  border-radius: ${borderRadius};
+  padding: ${chatPollMarginSm};
+  padding-left: 1rem;
+  margin-top: ${chatPollMarginSm} !important;
+`;
 const PresentationWrapper = styled(Wrapper)`
   display: flex;
   flex-flow: row;
@@ -231,12 +252,14 @@ export default {
   AvatarWrapper,
   Content,
   Meta,
+  HeaderAndTime,
   Name,
   Offline,
   Time,
   ChatItem,
   PollIcon,
   PollMessageChatItem,
+  QuestionQuizMessageChatItem,
   PresentationChatItem,
   PresentationWrapper,
 };

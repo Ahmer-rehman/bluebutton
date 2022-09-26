@@ -4,6 +4,7 @@ import { UsersContext } from '/imports/ui/components/components-data/users-conte
 import ChatService from '../../service';
 import { layoutSelect } from '../../../layout/context';
 import PollService from '/imports/ui/components/poll/service';
+import QuestionQuizService from '/imports/ui/components/question-quiz/service';
 import Auth from '/imports/ui/services/auth';
 
 const CHAT_CONFIG = Meteor.settings.public.chat;
@@ -14,9 +15,14 @@ const TimeWindowChatItemContainer = (props) => {
   const { message, messageId } = props;
 
   const idChatOpen = layoutSelect((i) => i.idChatOpen);
-
   const usingUsersContext = useContext(UsersContext);
   const { users } = usingUsersContext;
+  const usernames = {};
+  const amIPresenter = users[Auth.meetingID][Auth.userID].presenter;
+  Object.values(users[Auth.meetingID]).forEach((user) => {
+    if(!user.presenter)
+    usernames[user.userId] = { userId: user.userId, name: user.name };
+  });
   const {
     sender,
     senderName,
@@ -53,11 +59,14 @@ const TimeWindowChatItemContainer = (props) => {
         extra,
         messageValues,
         getPollResultString: PollService.getPollResultString,
+        getQuestionQuizResultString: QuestionQuizService.getQuestionQuizResultString,
         user,
         timestamp,
         systemMessage: messageId.startsWith(SYSTEM_CHAT_TYPE) || !sender,
         messageKey,
         handleReadMessage,
+        usernames,
+        amIPresenter,
         getExportedPresentationString: ChatService.getExportedPresentationString,
         ...props,
       }

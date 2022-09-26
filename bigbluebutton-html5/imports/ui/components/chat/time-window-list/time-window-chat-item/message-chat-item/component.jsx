@@ -40,7 +40,6 @@ class MessageChatItem extends PureComponent {
     super(props);
 
     this.ticking = false;
-
     this.handleMessageInViewport = _.debounce(this.handleMessageInViewport.bind(this), 50);
   }
 
@@ -169,6 +168,19 @@ class MessageChatItem extends PureComponent {
           dangerouslySetInnerHTML={{ __html: text }}
           data-test="chatPollMessageText"
         />
+      );
+    }
+    else if (type === 'questionQuiz') {
+      return (
+          <p
+            className={className}
+            style={{
+              borderLeft: `3px ${color} solid`, whiteSpace: 'pre-wrap',
+            }}
+            ref={(ref) => { this.text = ref; }}
+            dangerouslySetInnerHTML={{ __html: text }}
+            data-test="chatQuizMessageText"
+          />
       );
     } else {
       return (

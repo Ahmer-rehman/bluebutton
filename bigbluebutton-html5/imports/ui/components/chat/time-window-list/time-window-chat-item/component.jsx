@@ -5,11 +5,14 @@ import _ from 'lodash';
 import UserAvatar from '/imports/ui/components/user-avatar/component';
 import ChatLogger from '/imports/ui/components/chat/chat-logger/ChatLogger';
 import PollService from '/imports/ui/components/poll/service';
+import QuestionQuizService from '/imports/ui/components/question-quiz/service';
 import Styled from './styles';
+import QuizStats from '/imports/ui/components/question-quiz/stats/component'
 
 const CHAT_CONFIG = Meteor.settings.public.chat;
 const CHAT_CLEAR_MESSAGE = CHAT_CONFIG.system_messages_keys.chat_clear;
 const CHAT_POLL_RESULTS_MESSAGE = CHAT_CONFIG.system_messages_keys.chat_poll_result;
+const CHAT_QUESTION_QUIZ_RESULTS_MESSAGE = CHAT_CONFIG.system_messages_keys.chat_quiz_result;
 const CHAT_PUBLIC_ID = CHAT_CONFIG.public_id;
 const CHAT_EMPHASIZE_TEXT = CHAT_CONFIG.moderatorChatEmphasized;
 const CHAT_EXPORTED_PRESENTATION_MESSAGE = CHAT_CONFIG.system_messages_keys.chat_exported_presentation;
@@ -30,6 +33,8 @@ const propTypes = {
   chatAreaId: PropTypes.string.isRequired,
   handleReadMessage: PropTypes.func.isRequired,
   lastReadMessageTime: PropTypes.number,
+  usernames: PropTypes.object,
+  amIPresenter: PropTypes.bool
 };
 
 const defaultProps = {
@@ -37,6 +42,7 @@ const defaultProps = {
   scrollArea: null,
   lastReadMessageTime: 0,
   timestamp: 0,
+  usernames: null
 };
 
 const intlMessages = defineMessages({
@@ -47,6 +53,10 @@ const intlMessages = defineMessages({
   pollResult: {
     id: 'app.chat.pollResult',
     description: 'used in place of user name who published poll to chat',
+  },
+  questionQuizResult: {
+    id: 'app.chat.questionQuizResult',
+    description: 'used in place of user name who published quiz to chat',
   },
   [CHAT_CLEAR_MESSAGE]: {
     id: 'app.chat.clearPublicChatMessage',
@@ -105,6 +115,9 @@ class TimeWindowChatItem extends PureComponent {
       return this.renderPollItem();
     }
 
+    if (messages && messages[0].id.includes(CHAT_QUESTION_QUIZ_RESULTS_MESSAGE)) {
+      return this.renderQuestionQuizItem();
+    }
     if (messages && messages[0].id.includes(CHAT_EXPORTED_PRESENTATION_MESSAGE)) {
       return this.renderExportedPresentationItem();
     }
@@ -283,6 +296,74 @@ class TimeWindowChatItem extends PureComponent {
                   });
                 }
               }}
+              scrollArea={scrollArea}
+              color={color}
+            />
+          </Styled.Content>
+        </Styled.Wrapper>
+      </Styled.Item>
+    ) : null;
+  }
+
+  renderQuestionQuizItem() {
+    const {
+      timestamp,
+      color,
+      intl,
+      getQuestionQuizResultString,
+      messages,
+      extra,
+      scrollArea,
+      chatAreaId,
+      lastReadMessageTime,
+      handleReadMessage,
+      usernames,
+      amIPresenter
+    } = this.props;
+
+    const dateTime = new Date(timestamp);
+
+    return messages ? (
+      <Styled.Item key={_.uniqueId('message-quiz-item-')}>
+        <Styled.Wrapper ref={(ref) => { this.item = ref; }}>
+          <Styled.AvatarWrapper>
+            <UserAvatar
+              color={QuestionQuizService.QUIZ_AVATAR_COLOR}
+              moderator={true}
+            >
+              {<Styled.PollIcon iconName="polling" />}
+            </UserAvatar>
+          </Styled.AvatarWrapper>
+          <Styled.Content>
+            <Styled.Meta>
+              <Styled.HeaderAndTime>
+              <Styled.Name>
+                <span>{intl.formatMessage(intlMessages.questionQuizResult)}</span>
+              </Styled.Name>
+              <Styled.Time dateTime={dateTime}>
+                <FormattedTime value={dateTime} />
+              </Styled.Time>
+              </Styled.HeaderAndTime>
+              {amIPresenter && (
+                <QuizStats
+                  intl={intl}
+                  usernames={usernames}
+                  questionQuizResultData={extra?.questionQuizResultData}
+                />
+              )}
+            </Styled.Meta>
+            <Styled.QuestionQuizMessageChatItem
+              type="questionQuiz"
+              key={messages[0].id}
+              intl={intl}
+              questionQuizResultData={extra.questionQuizResultData}
+              text={getQuestionQuizResultString(extra.questionQuizResultData, intl)}
+              time={messages[0].time}
+              usernames={usernames}
+              amIPresenter={amIPresenter}
+              chatAreaId={chatAreaId}
+              lastReadMessageTime={lastReadMessageTime}
+              handleReadMessage={handleReadMessage}
               scrollArea={scrollArea}
               color={color}
             />
