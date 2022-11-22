@@ -46,6 +46,8 @@ const propTypes = {
   formattedTelVoice: PropTypes.string.isRequired,
   autoplayBlocked: PropTypes.bool.isRequired,
   handleAllowAutoplay: PropTypes.func.isRequired,
+  setUserSelectedMicrophone: PropTypes.func.isRequired,
+  setUserSelectedListenOnly: PropTypes.func.isRequired,
 };
 
 const defaultProps = {
@@ -278,6 +280,8 @@ class AudioModal extends Component {
     const {
       joinListenOnly,
       isConnecting,
+      setUserSelectedMicrophone,
+      setUserSelectedListenOnly,
     } = this.props;
 
     const {
@@ -290,6 +294,9 @@ class AudioModal extends Component {
       disableActions: true,
       hasError: false,
     });
+
+    setUserSelectedListenOnly(true);
+    setUserSelectedMicrophone(false);
 
     return joinListenOnly().then(() => {
       this.setState({
@@ -308,6 +315,8 @@ class AudioModal extends Component {
     const {
       joinMicrophone,
       isConnecting,
+      setUserSelectedMicrophone,
+      setUserSelectedListenOnly,
     } = this.props;
 
     const {
@@ -320,6 +329,9 @@ class AudioModal extends Component {
       hasError: false,
       disableActions: true,
     });
+
+    setUserSelectedMicrophone(true);
+    setUserSelectedListenOnly(false);
 
     joinMicrophone().then(() => {
       this.setState({
