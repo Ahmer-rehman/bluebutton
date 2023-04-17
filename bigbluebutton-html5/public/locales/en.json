@@ -235,6 +235,8 @@
     "app.presentation.presentationToolbar.fitToWidth": "Fit to width",
     "app.presentation.presentationToolbar.fitToPage": "Fit to page",
     "app.presentation.presentationToolbar.goToSlide": "Slide {0}",
+    "app.presentation.presentationToolbar.splitPresentationDesc": "Split presentation window",
+    "app.presentation.presentationToolbar.mergePresentationDesc": "Merge presentation window",
     "app.presentation.presentationToolbar.hideToolsDesc": "Hide Toolbars",
     "app.presentation.presentationToolbar.showToolsDesc": "Show Toolbars",
     "app.presentation.placeholder": "There is no currently active presentation",
