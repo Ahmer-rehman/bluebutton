@@ -608,6 +608,8 @@ class Presentation extends PureComponent {
       intl,
       fullscreenElementId,
       layoutContextDispatch,
+      currentSlide,
+      userIsPresenter
     } = this.props;
     const { tldrawAPI } = this.state;
 
@@ -618,6 +620,8 @@ class Presentation extends PureComponent {
         elementName={intl.formatMessage(intlMessages.presentationLabel)}
         elementId={fullscreenElementId}
         layoutContextDispatch={layoutContextDispatch}
+        currentSlide={currentSlide}
+        userIsPresenter={userIsPresenter}
       />
     );
   }

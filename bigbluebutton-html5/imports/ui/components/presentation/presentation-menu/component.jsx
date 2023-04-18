@@ -9,6 +9,7 @@ import BBBMenu from '/imports/ui/components/common/menu/component';
 import TooltipContainer from '/imports/ui/components/common/tooltip/container';
 import { ACTIONS } from '/imports/ui/components/layout/enums';
 import browserInfo from '/imports/utils/browserInfo';
+import SmartLinkShareContainer from './smart-link-share/container';
 import AppService from '/imports/ui/components/app/service';
 
 const intlMessages = defineMessages({
@@ -120,6 +121,8 @@ const PresentationMenu = (props) => {
     meetingName,
     isIphone,
     isRTL,
+    currentSlide,
+    userIsPresenter
   } = props;
 
   const [state, setState] = useState({
@@ -329,6 +332,7 @@ const PresentationMenu = (props) => {
     if (undoCtrls?.style) {
       undoCtrls.style = 'padding:0px';
     }
+
     const styleTool = document.getElementById('TD-Styles')?.parentNode;
     if (styleTool?.style) {
       styleTool.style = 'right:0px';
@@ -338,6 +342,7 @@ const PresentationMenu = (props) => {
 
   return (
     <Styled.Right id='WhiteboardOptionButton'>
+      <SmartLinkShareContainer {...{ intl, currentSlide, userIsPresenter }} />
       <BBBMenu
         trigger={(
           <TooltipContainer title={intl.formatMessage(intlMessages.optionsLabel)}>
