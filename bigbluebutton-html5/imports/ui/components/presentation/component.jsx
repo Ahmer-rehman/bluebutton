@@ -1,6 +1,8 @@
 import React, { PureComponent } from 'react';
 import PropTypes from 'prop-types';
 import WhiteboardContainer from '/imports/ui/components/whiteboard/container';
+import Vision from '/imports/ui/components/whiteboard/vision';
+import Service from '/imports/ui/components/whiteboard/service';
 import { HUNDRED_PERCENT, MAX_PERCENT } from '/imports/utils/slideCalcUtils';
 import { SPACE } from '/imports/utils/keyCodes';
 import { defineMessages, injectIntl } from 'react-intl';
@@ -76,11 +78,13 @@ class Presentation extends PureComponent {
       tldrawAPI: null,
       isPanning: false,
       tldrawIsMounting: true,
+      wbVision: false,
       isToolbarVisible: true,
     };
 
     this.currentPresentationToastId = null;
 
+    this.toggleVision = this.toggleVision.bind(this);
     this.getSvgRef = this.getSvgRef.bind(this);
     this.setFitToWidth = this.setFitToWidth.bind(this);
     this.zoomChanger = this.zoomChanger.bind(this);
@@ -125,6 +129,31 @@ class Presentation extends PureComponent {
     }
 
     return stateChange;
+  }
+
+  toggleVision() {
+    const { wbVision } = this.state;
+    this.setState({
+      wbVision: !wbVision,
+    });    
+  }
+
+  setIsPanning() {
+    this.setState({
+      isPanning: !this.state.isPanning,
+    });
+  }
+
+  handlePanShortcut(e) {
+    const { userIsPresenter } = this.props;
+    if (e.keyCode === SPACE && userIsPresenter) {
+      switch(e.type) {
+        case 'keyup':
+          return this.state.isPanning && this.setIsPanning();
+        case 'keydown':
+          return !this.state.isPanning && this.setIsPanning(); 
+      }
+    }
   }
 
   componentDidMount() {
@@ -529,9 +558,7 @@ class Presentation extends PureComponent {
       multiUserSize,
       multiUser,
     } = this.props;
-    const {
-      zoom, fitToWidth, isPanning,
-    } = this.state;
+    const { zoom, fitToWidth, isPanning, wbVision } = this.state;
 
     if (!currentSlide) return null;
 
@@ -554,7 +581,9 @@ class Presentation extends PureComponent {
           fullscreenElementId,
           layoutContextDispatch,
           presentationIsOpen,
+          wbVision,
         }}
+        toggleVision={this.toggleVision}
         setIsPanning={this.setIsPanning}
         isPanning={isPanning}
         currentSlideNum={currentSlide.num}
@@ -658,6 +687,7 @@ class Presentation extends PureComponent {
       fitToWidth,
       zoom,
       tldrawIsMounting,
+      wbVision,
       isPanning,
       tldrawAPI,
       isToolbarVisible,
@@ -728,28 +758,28 @@ class Presentation extends PureComponent {
                 height: svgHeight + toolbarHeight,
               }}
             >
-              <div
+              <Styled.Scrollable
                 style={{
                   position: 'absolute',
                   width: svgDimensions.width < 0 ? 0 : svgDimensions.width,
                   height: svgDimensions.height < 0 ? 0 : svgDimensions.height,
                   textAlign: 'center',
                   display: !presentationIsOpen ? 'none' : 'block',
+                  overflow: wbVision ? 'auto' : 'hidden',
                 }}
                 id={"presentationInnerWrapper"}
               >
                 <Styled.VisuallyHidden id="currentSlideText">{slideContent}</Styled.VisuallyHidden>
-                {!tldrawIsMounting && currentSlide && this.renderPresentationMenu()}
+                {!tldrawIsMounting && currentSlide && !wbVision && this.renderPresentationMenu()}
                 <WhiteboardContainer
                   whiteboardId={currentSlide?.id}
                   podId={podId}
-                  slidePosition={slidePosition}
+                  {...{ podId, slidePosition, intl, fitToWidth, isViewersCursorLocked, wbVision }}
                   getSvgRef={this.getSvgRef}
                   tldrawAPI={tldrawAPI}
                   setTldrawAPI={this.setTldrawAPI}
                   curPageId={currentSlide?.num.toString() || '0'}
                   svgUri={currentSlide?.svgUri}
-                  intl={intl}
                   presentationWidth={svgWidth}
                   presentationHeight={svgHeight}
                   presentationAreaHeight={presentationBounds?.height}
@@ -757,7 +787,6 @@ class Presentation extends PureComponent {
                   isViewersCursorLocked={isViewersCursorLocked}
                   isPanning={isPanning}
                   zoomChanger={this.zoomChanger}
-                  fitToWidth={fitToWidth}
                   zoomValue={zoom}
                   setTldrawIsMounting={this.setTldrawIsMounting}
                   isFullscreen={isFullscreen}
@@ -770,7 +799,7 @@ class Presentation extends PureComponent {
                   isToolbarVisible={isToolbarVisible}
                 />
                 {isFullscreen && <PollingContainer />}
-              </div>
+              </Styled.Scrollable>
               {!tldrawIsMounting && (
                 <Styled.PresentationToolbar
                   ref={(ref) => { this.refPresentationToolbar = ref; }}

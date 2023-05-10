@@ -1,13 +1,18 @@
-import * as React from 'react';
+
+import * as React from "react";
+import _ from "lodash";
+import { createGlobalStyle } from "styled-components";
+import GridLayout from "react-grid-layout";
+import { Responsive as ResponsiveGridLayout } from "react-grid-layout";
+import { ColorStyle, TDShapeType, Tldraw, TldrawApp } from "@tldraw/tldraw";
 import PropTypes from 'prop-types';
-import { TldrawApp, Tldraw } from '@tldraw/tldraw';
-import SlideCalcUtil, { HUNDRED_PERCENT } from '/imports/utils/slideCalcUtils';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { Utils } from '@tldraw/core';
-import Cursors from './cursors/container';
-import Settings from '/imports/ui/services/settings';
+import { isEqual } from 'radash';
+import { Utils } from "@tldraw/core";
 import logger from '/imports/startup/client/logger';
 import KEY_CODES from '/imports/utils/keyCodes';
+import { throttle } from '/imports/utils/throttle';
+import SlideCalcUtil, {HUNDRED_PERCENT} from '/imports/utils/slideCalcUtils';
+import Settings from '/imports/ui/services/settings';
 import {
   presentationMenuHeight,
   styleMenuOffset,
@@ -18,8 +23,11 @@ import PanToolInjector from './pan-tool-injector/component';
 import {
   findRemoved, filterInvalidShapes, mapLanguage, sendShapeChanges, usePrevious,
 } from './utils';
-import { throttle } from '/imports/utils/throttle';
-import { isEqual } from 'radash';
+import Vision from './vision';
+import Cursors from "./cursors/container";
+
+import '/node_modules/react-grid-layout/css/styles.css';
+import '/node_modules/react-resizable/css/styles.css';
 
 const SMALL_HEIGHT = 435;
 const SMALLEST_HEIGHT = 363;
@@ -27,6 +35,7 @@ const SMALL_WIDTH = 800;
 const SMALLEST_WIDTH = 645;
 const TOOLBAR_SMALL = 28;
 const TOOLBAR_LARGE = 38;
+const TOOLBAR_OFFSET = -8;
 
 export default function Whiteboard(props) {
   const {
@@ -34,7 +43,8 @@ export default function Whiteboard(props) {
     removeShapes,
     initDefaultPages,
     persistShape,
-    shapes,
+    notifyNotAllowedChange,
+    shapes: s,
     assets,
     currentUser,
     curPres,
@@ -75,7 +85,20 @@ export default function Whiteboard(props) {
     sidebarNavigationWidth,
     animations,
     isToolbarVisible,
+    wbVision,
+    hideViewersAnnotation,
+    isPresenterShape,
   } = props;
+
+  let shapes = s;
+  if (hideViewersAnnotation) {
+    shapes = Object.fromEntries(Object.entries(shapes)?.filter(v => {
+      if (isPresenterShape(v[1]?.userId) || (v[1]?.userId === currentUser?.userId || v[1]?.id?.includes("slide-background-shape") || v[1]?.id?.includes("slide-cover")) || currentUser?.presenter) {
+        return v
+      }
+    }));
+  }
+
   const { pages, pageStates } = initDefaultPages(curPres?.pages.length || 1);
   const rDocument = React.useRef({
     name: 'test',
@@ -87,6 +110,8 @@ export default function Whiteboard(props) {
     assets: {},
   });
   const [history, setHistory] = React.useState(null);
+  const [forcePanning, setForcePanning] = React.useState(false);
+  const [objAPI, setObjAPI] = React.useState({});
   const [zoom, setZoom] = React.useState(HUNDRED_PERCENT);
   const [tldrawZoom, setTldrawZoom] = React.useState(1);
   const [isMounting, setIsMounting] = React.useState(true);
@@ -507,6 +532,45 @@ export default function Whiteboard(props) {
   const hasWBAccess = hasMultiUserAccess(whiteboardId, currentUser.userId);
 
   React.useEffect(() => {
+    if ((hasWBAccess || isPresenter) && !wbVision) {
+      tldrawAPI?.setSetting('dockPosition', isRTL ? 'left' : 'right');
+      const tdToolsDots = document.getElementById("TD-Tools-Dots");
+      const tdDelete = document.getElementById("TD-Delete");
+      const tdPrimaryTools = document.getElementById("TD-PrimaryTools");
+      const tdTools = document.getElementById("TD-Tools");
+
+      if (tdToolsDots && tdDelete && tdPrimaryTools) {
+        const size = ((props.height < SMALL_HEIGHT) || (props.width < SMALL_WIDTH))
+          ? TOOLBAR_SMALL : TOOLBAR_LARGE;
+        tdToolsDots.style.height = `${size}px`;
+        tdToolsDots.style.width = `${size}px`;
+        const delButton = tdDelete.getElementsByTagName('button')[0];
+        delButton.style.height = `${size}px`;
+        delButton.style.width = `${size}px`;
+        const primaryBtns = tdPrimaryTools?.getElementsByTagName('button');
+        for (let item of primaryBtns) {
+          item.style.height = `${size}px`;
+          item.style.width = `${size}px`;
+        }
+      }
+      if (((props.height < SMALLEST_HEIGHT) || (props.width < SMALLEST_WIDTH)) && tdTools && !wbVision) {
+        tldrawAPI?.setSetting('dockPosition', 'bottom');
+        tdTools.parentElement.style.bottom = `${TOOLBAR_OFFSET}px`;
+      }
+      // removes tldraw native help menu button
+      tdTools?.parentElement?.nextSibling?.remove();
+      // removes image tool from the tldraw toolbar
+      if (!wbVision && (hasWBAccess || isPresenter)) {
+        document.getElementById("TD-PrimaryTools-Image").style.display = 'none';
+      }
+    }
+
+    if (tldrawAPI) {
+      tldrawAPI.isForcePanning = isPanning;
+    }
+  });
+
+  React.useEffect(() => {
     if (tldrawAPI) {
       tldrawAPI.isForcePanning = isPanning;
     }
@@ -595,26 +659,28 @@ export default function Whiteboard(props) {
   };
 
   const onMount = (app) => {
-    const menu = document.getElementById('TD-Styles')?.parentElement;
-    const canvas = document.getElementById('canvas');
-    if (canvas) {
-      canvas.addEventListener('wheel', handleWheelEvent, { capture: true });
-    }
-
-    if (menu) {
-      const MENU_OFFSET = '48px';
-      menu.style.position = 'relative';
-      menu.style.height = presentationMenuHeight;
-      menu.setAttribute('id', 'TD-Styles-Parent');
-      if (isRTL) {
-        menu.style.left = MENU_OFFSET;
-      } else {
-        menu.style.right = MENU_OFFSET;
+    if (!wbVision && (hasWBAccess || isPresenter)) {
+      const menu = document.getElementById('TD-Styles')?.parentElement;
+      const canvas = document.getElementById('canvas');
+      if (canvas) {
+        canvas.addEventListener('wheel', handleWheelEvent, { capture: true });
       }
 
-      [...menu.children]
-        .sort((a, b) => (a?.id > b?.id ? -1 : 1))
-        .forEach((n) => menu.appendChild(n));
+      if (menu) {
+        const MENU_OFFSET = '48px';
+        menu.style.position = 'relative';
+        menu.style.height = presentationMenuHeight;
+        menu.setAttribute('id', 'TD-Styles-Parent');
+        if (isRTL) {
+          menu.style.left = MENU_OFFSET;
+        } else {
+          menu.style.right = MENU_OFFSET;
+        }
+
+        [...menu.children]
+          .sort((a, b) => (a?.id > b?.id ? -1 : 1))
+          .forEach((n) => menu.appendChild(n));
+      }
     }
 
     app.setSetting('language', language);
@@ -989,6 +1055,70 @@ export default function Whiteboard(props) {
       onPatch={onPatch}
     />
   );
+
+  if (wbVision) {
+    const users = Object.values(props.users)
+    const formattedData = {};
+  
+    Object.values(users[0]).map(v => {
+        const userShapes = {};
+        Object.entries(shapes).map(l => {
+          if (!l[1]?.userId || l[1]?.userId === v?.userId || isPresenterShape(l[1]?.userId)) {
+            l[1].parentId = "1";
+            userShapes[l[0]] = l[1];
+          };
+        });
+  
+        formattedData[v?.userId] = {
+          name: v?.name,
+          id: v?.userId,
+          presenter: v?.presenter,
+          color: v?.color,
+          shapes: userShapes,
+        }
+    });
+  
+    const gridItems = [];
+    let xVal = 0;
+    let yVal = 0;
+
+    Object.entries(formattedData).map((f, index) => {
+      if (f[1]?.presenter === false) {
+        if (xVal === 4) {
+          xVal = 0;
+          yVal++;
+        }
+        gridItems.push(
+          <div style={{ color: 'white', backgroundColor: `${f[1]?.color}` }} key={f[0]} data-grid={{ i: f[0], x: xVal, y: yVal, w: 1, h: 2 }}>
+            <div style={{ display: 'flex', flexFlow: 'row', justifyContent: 'space-between', padding: '.3rem' }}>
+              <div>{f[1]?.name}</div>
+              <div title="Center" onClick={() => {
+                objAPI[f[0]]?.zoomToFit();
+              }} style={{ cursor: 'pointer', height: '10px', width: '10px', backgroundColor: 'gray' }}></div>
+            </div>
+            <Vision {...{objAPI, setObjAPI}} key={f[0]} uid={f[0]} whiteboardId={whiteboardId} assets={assets} shapes={f[1]?.shapes} doc={doc}/>
+          </div>
+        );
+        xVal++;
+      }
+    });
+  
+    return (
+      <ResponsiveGridLayout
+        key={'grid'}
+        className="layout"
+        layout={layout}
+        cols={8}
+        rowHeight={30}
+        width={slidePosition.viewBoxWidth}
+        margin={[10, 35]}
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 11, md: 8, sm: 4, xs: 2, xxs: 1 }}
+      >
+        {gridItems}
+      </ResponsiveGridLayout>
+    );
+  }
 
   const size = ((height < SMALL_HEIGHT) || (width < SMALL_WIDTH))
     ? TOOLBAR_SMALL : TOOLBAR_LARGE;

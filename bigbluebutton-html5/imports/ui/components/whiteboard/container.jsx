@@ -1,6 +1,9 @@
-import { withTracker } from 'meteor/react-meteor-data';
+import { withTracker } from "meteor/react-meteor-data";
+import Service from "./service";
+import React, { useContext } from "react";
+import Auth from "/imports/ui/services/auth";
+import Meetings from '/imports/api/meetings';
 import PropTypes from 'prop-types';
-import React, { useContext } from 'react';
 import {
   ColorStyle,
   DashStyle,
@@ -23,7 +26,6 @@ import {
 } from './service';
 import Whiteboard from './component';
 import { UsersContext } from '../components-data/users-context/context';
-import Auth from '/imports/ui/services/auth';
 import PresentationToolbarService from '../presentation/presentation-toolbar/service';
 import { layoutSelect } from '../layout/context';
 import FullscreenService from '/imports/ui/components/common/fullscreen-button/service';
@@ -77,6 +79,7 @@ const WhiteboardContainer = (props) => {
         hasShapeAccess,
         handleToggleFullScreen,
         sidebarNavigationWidth,
+        users,
       }}
       {...props}
       meetingId={Auth.meetingID}
@@ -93,6 +96,7 @@ export default withTracker(({
   podId,
   presentationId,
   darkTheme,
+  zoomChanger,
 }) => {
   const shapes = getShapes(whiteboardId, curPageId, intl);
   const curPres = getCurrentPres();
@@ -135,6 +139,13 @@ export default withTracker(({
     removeShapes,
     zoomSlide: PresentationToolbarService.zoomSlide,
     skipToSlide: PresentationToolbarService.skipToSlide,
+    zoomChanger: zoomChanger,
+    isPresenterShape: Service.isPresenterShape,
+    hideViewersAnnotation: Meetings.findOne({ meetingId: Auth.meetingID }, {
+      fields: {
+        lockSettingsProps: 1,
+      }
+    })?.lockSettingsProps?.hideViewersAnnotation,
     nextSlide: PresentationToolbarService.nextSlide,
     previousSlide: PresentationToolbarService.previousSlide,
     numberOfSlides: PresentationToolbarService.getNumberOfSlides(podId, presentationId),
