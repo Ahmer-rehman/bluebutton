@@ -20,6 +20,9 @@ import org.bigbluebutton.core2.RunningMeetings
 import org.bigbluebutton.core2.message.senders.MsgBuilder
 import org.bigbluebutton.service.HealthzService
 
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+
 object BigBlueButtonActor extends SystemConfiguration {
   def props(
       system:         ActorSystem,
@@ -66,6 +69,9 @@ class BigBlueButtonActor(
   def receive = {
     // Internal messages
     case msg: DestroyMeetingInternalMsg => handleDestroyMeeting(msg)
+    case msg: IsMeetingRunning          => handleIsMeetingRunning(sender(), msg)
+    case msg: GetMeeting                => handleGetMeeting(sender(), msg)
+    case msg: GetMeetings               => handleGetMeetings(sender(), msg)
 
     // 2x messages
     case msg: BbbCommonEnvCoreMsg       => handleBbbCommonEnvCoreMsg(msg)
@@ -197,6 +203,32 @@ class BigBlueButtonActor(
       //Remove ColorPicker idx of the meeting
       ColorPicker.reset(m.props.meetingProp.intId)
     }
+  }
+
+  private def handleIsMeetingRunning(sender: ActorRef, msg: IsMeetingRunning): Unit = {
+    RunningMeetings.findWithId(meetings, msg.meetingId) match {
+      case Some(_) => sender ! true
+      case None =>
+        RunningMeetings.findWithExtId(meetings, msg.meetingId) match {
+          case Some(_) => sender ! true
+          case None    => sender ! false
+        }
+    }
+  }
+
+  private def handleGetMeeting(sender: ActorRef, msg: GetMeeting): Unit = {
+    RunningMeetings.findWithId(meetings, msg.meetingId) match {
+      case Some(m) => sender ! Some(m)
+      case None =>
+        RunningMeetings.findWithExtId(meetings, msg.meetingId) match {
+          case Some(m) => sender ! Some(m)
+          case None    => sender ! None
+        }
+    }
+  }
+
+  private def handleGetMeetings(sender: ActorRef, msg: GetMeetings): Unit = {
+    sender ! RunningMeetings.meetingsMap(meetings)
   }
 
 }

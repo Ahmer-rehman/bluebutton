@@ -19,9 +19,15 @@
 package org.bigbluebutton.web.controllers
 
 import com.google.gson.Gson
+import com.google.rpc.Status
+import grails.core.GrailsApplication
 import grails.web.context.ServletContextHolder
 import groovy.json.JsonBuilder
 import groovy.xml.MarkupBuilder
+import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
+import io.grpc.StatusRuntimeException
+import io.grpc.protobuf.StatusProto
 import org.apache.commons.codec.binary.Base64
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
@@ -30,23 +36,28 @@ import org.apache.commons.lang.StringUtils
 import org.bigbluebutton.api.*
 import org.bigbluebutton.api.domain.GuestPolicy
 import org.bigbluebutton.api.domain.Meeting
+import org.bigbluebutton.api.domain.User
 import org.bigbluebutton.api.domain.UserSession
-import org.bigbluebutton.api.service.ValidationService
 import org.bigbluebutton.api.service.ServiceUtils
+import org.bigbluebutton.api.service.ValidationService
 import org.bigbluebutton.api.util.ParamsUtil
 import org.bigbluebutton.api.util.ResponseBuilder
 import org.bigbluebutton.presentation.PresentationUrlDownloadService
+import org.bigbluebutton.presentation.SupportedFileTypes
 import org.bigbluebutton.presentation.UploadedPresentation
-import org.bigbluebutton.presentation.SupportedFileTypes;
+import org.bigbluebutton.protos.Common
+import org.bigbluebutton.protos.MeetingServiceGrpc
+import org.bigbluebutton.protos.MeetingServiceOuterClass
+import org.bigbluebutton.protos.MeetingServiceOuterClass.MeetingInfo
 import org.bigbluebutton.web.services.PresentationService
+import org.bigbluebutton.web.services.turn.RemoteIceCandidate
+import org.bigbluebutton.web.services.turn.StunServer
 import org.bigbluebutton.web.services.turn.StunTurnService
 import org.bigbluebutton.web.services.turn.TurnEntry
-import org.bigbluebutton.web.services.turn.StunServer
-import org.bigbluebutton.web.services.turn.RemoteIceCandidate
 import org.codehaus.groovy.util.ListHashMap
 import org.json.JSONArray
 
-
+import javax.annotation.PostConstruct
 import javax.servlet.ServletRequest
 
 class ApiController {
@@ -66,6 +77,20 @@ class ApiController {
   ResponseBuilder responseBuilder = initResponseBuilder()
   ValidationService validationService
 
+  GrailsApplication grailsApplication
+
+  ManagedChannel channel
+  MeetingServiceGrpc.MeetingServiceStub asyncStub
+  MeetingServiceGrpc.MeetingServiceBlockingStub blockingStub
+
+  @PostConstruct
+  void init() {
+    String grpcHost = grailsApplication.config.getProperty('grpc.host', "127.0.0.1")
+    Integer grpcPort = grailsApplication.config.getProperty('grpc.port', Integer, 8081)
+    channel = ManagedChannelBuilder.forAddress(grpcHost, grpcPort).usePlaintext().build()
+    asyncStub = MeetingServiceGrpc.newStub(channel)
+    blockingStub = MeetingServiceGrpc.newBlockingStub(channel)
+  }
 
   def initResponseBuilder = {
     String protocol = this.getClass().getResource("").getProtocol();
@@ -553,8 +578,20 @@ class ApiController {
       return
     }
 
-    Meeting meeting = ServiceUtils.findMeetingFromMeetingID(params.meetingID);
-    boolean isRunning = meeting != null && meeting.isRunning();
+    boolean isRunning = false
+    MeetingServiceOuterClass.MeetingRunningReq request = MeetingServiceOuterClass.MeetingRunningReq.newBuilder().setMeetingId(params.meetingID).build()
+    try {
+      MeetingServiceOuterClass.MeetingRunningResp response = blockingStub.isMeetingRunning(request)
+      isRunning = response.getIsRunning()
+    } catch (StatusRuntimeException e) {
+      log.error("RPC isMeetingRunning request failed")
+      log.error("Status code {}", e.getStatus())
+      log.error("{}", e.getMessage())
+      Status status =  StatusProto.fromStatusAndTrailers(e.getStatus(), e.getTrailers())
+      Common.ErrorResp error = status.getDetails(0).unpack(Common.ErrorResp)
+      invalid(error.getKey(), error.getMessage())
+      return
+    }
 
     response.addHeader("Cache-Control", "no-cache")
     withFormat {
@@ -628,7 +665,21 @@ class ApiController {
       return
     }
 
-    Meeting meeting = ServiceUtils.findMeetingFromMeetingID(params.meetingID);
+    Meeting meeting = null
+    MeetingServiceOuterClass.MeetingInfoReq request = MeetingServiceOuterClass.MeetingInfoReq.newBuilder().setMeetingId(params.meetingID).build()
+
+    try {
+      MeetingServiceOuterClass.MeetingInfoResp response = blockingStub.getMeetingInfo(request)
+      meeting = meetingInfoToMeeting(response.getMeetingInfo())
+    } catch (StatusRuntimeException e) {
+      log.error("RPC getMeetingInfo request failed")
+      log.error("Status code {}", e.getStatus())
+      log.error("{}", e.getMessage())
+      Status status =  StatusProto.fromStatusAndTrailers(e.getStatus(), e.getTrailers())
+      Common.ErrorResp error = status.getDetails(0).unpack(Common.ErrorResp)
+      invalid(error.getKey(), error.getMessage())
+      return
+    }
 
     withFormat {
       xml {
@@ -655,21 +706,38 @@ class ApiController {
       return
     }
 
-    Collection<Meeting> mtgs = meetingService.getMeetings();
+    List<Meeting> meetings = new ArrayList<>()
+    MeetingServiceOuterClass.GetMeetingsStreamReq request = MeetingServiceOuterClass.GetMeetingsStreamReq.newBuilder().build()
+    try {
+      Iterator<MeetingServiceOuterClass.MeetingInfoResp> responseItr = blockingStub.getMeetingsStream(request)
+      while (responseItr.hasNext()) {
+        MeetingServiceOuterClass.MeetingInfoResp response = responseItr.next()
+        MeetingInfo meetingInfo = response.getMeetingInfo()
+        if (meetingInfo.getMeetingIntId() == null || meetingInfo.getMeetingIntId().isBlank()) continue
+        meetings.add(meetingInfoToMeeting(meetingInfo))
+      }
+    } catch (StatusRuntimeException e) {
+      log.error("RPC getMeetings request failed")
+      log.error("Status code {}", e.getStatus())
+      log.error("{}", e.getMessage())
+      Status status =  StatusProto.fromStatusAndTrailers(e.getStatus(), e.getTrailers())
+      Common.ErrorResp error = status.getDetails(0).unpack(Common.ErrorResp)
+      invalid(error.getKey(), error.getMessage())
+      return
+    }
 
-    if (mtgs == null || mtgs.isEmpty()) {
+    if (meetings == null || meetings.isEmpty()) {
       response.addHeader("Cache-Control", "no-cache")
       withFormat {
         xml {
-          render(text: responseBuilder.buildGetMeetingsResponse(mtgs, "noMeetings", "no meetings were found on this server", RESP_CODE_SUCCESS), contentType: "text/xml")
+          render(text: responseBuilder.buildGetMeetingsResponse(meetings, "noMeetings", "no meetings were found on this server", RESP_CODE_SUCCESS), contentType: "text/xml")
         }
       }
     } else {
       response.addHeader("Cache-Control", "no-cache")
-
       withFormat {
         xml {
-          render(text: responseBuilder.buildGetMeetingsResponse(mtgs, null, null, RESP_CODE_SUCCESS), contentType: "text/xml")
+          render(text: responseBuilder.buildGetMeetingsResponse(meetings, null, null, RESP_CODE_SUCCESS), contentType: "text/xml")
         }
       }
     }
@@ -2028,6 +2096,55 @@ class ApiController {
     }
 
     return response
+  }
+
+  private static Meeting meetingInfoToMeeting(MeetingInfo meetingInfo) {
+    // State from BBB Web is still required until meeting metadata, user custom data, and meeting start and end times are added to akka-apps
+    Meeting m = ServiceUtils.findMeetingFromMeetingID(meetingInfo.getMeetingIntId())
+
+    Meeting meeting = new Meeting.Builder(meetingInfo.getMeetingExtId(), meetingInfo.getMeetingIntId(), meetingInfo.getDurationInfo().getCreateTime())
+                  .withName(meetingInfo.getMeetingName())
+                  .withMaxUsers(meetingInfo.getParticipantInfo().getMaxUsers())
+                  .withModeratorPass(meetingInfo.getModeratorPw())
+                  .withViewerPass(meetingInfo.getAttendeePw())
+                  .withRecording(meetingInfo.getRecording())
+                  .withDuration(meetingInfo.getDurationInfo().getDuration())
+                  .withTelVoice(meetingInfo.getVoiceBridge())
+                  .withDialNumber(meetingInfo.getDialNumber())
+                  .withMetadata(m.getMetadata())
+                  .isBreakout(meetingInfo.getBreakoutInfo().getIsBreakout())
+                  .build()
+
+    meeting.setIsRunning(meetingInfo.getDurationInfo().getIsRunning())
+    meeting.setUserHasJoined(meetingInfo.getParticipantInfo().getHasUserJoined())
+    meeting.setForciblyEnded(meetingInfo.getDurationInfo().getHasBeenForciblyEnded())
+    meeting.setStartTime(m.getStartTime())
+    meeting.setEndTime(m.getEndTime())
+    meeting.setNumUsersOnline(meetingInfo.getParticipantInfo().getParticipantCount())
+    meeting.setNumListenOnlyUsers(meetingInfo.getParticipantInfo().getListenerCount())
+    meeting.setNumVoiceUsers(meetingInfo.getParticipantInfo().getVoiceParticipantCount())
+    meeting.setNumVideoUsers(meetingInfo.getParticipantInfo().getVideoCount())
+    meeting.setNumMods(meetingInfo.getParticipantInfo().getModeratorCount())
+
+    for(MeetingServiceOuterClass.User u: meetingInfo.getUsersList()) {
+      User user = new User(u.getUserId(), u.getFullName(), u.getFullName(), u.getRole(), false, "", false, "", u.getClientType())
+      user.setIsPresenter(u.getIsPresenter())
+      user.setListeningOnly(u.getIsListeningOnly())
+      user.setVoiceJoined(u.getHasJoinedVoice())
+      user.setHasVideo(u.getHasVideo())
+      meeting.addUserCustomData(u.getUserId(), m.getUserCustomData(u.getUserId()))
+      meeting.userJoined(user)
+    }
+
+    meeting.setParentMeetingId(meetingInfo.getBreakoutInfo().getParentMeetingId())
+    meeting.setSequence(meetingInfo.getBreakoutInfo().getSequence())
+    meeting.setFreeJoin(meetingInfo.getBreakoutInfo().getFreeJoin())
+
+    for(String breakoutRoom: meetingInfo.getBreakoutRoomsList().asList()) {
+      meeting.addBreakoutRoom(breakoutRoom)
+    }
+
+    return meeting
   }
 
 }

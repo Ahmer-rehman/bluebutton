@@ -1,54 +1,49 @@
 package org.bigbluebutton.core.running
 
-import java.io.{ PrintWriter, StringWriter }
+import org.apache.pekko.actor.{ OneForOneStrategy, Props }
 import org.apache.pekko.actor.SupervisorStrategy.Resume
 import org.bigbluebutton.SystemConfiguration
-import org.bigbluebutton.core.apps.groupchats.GroupChatHdlrs
-import org.bigbluebutton.core.apps.presentationpod._
-import org.bigbluebutton.core.apps.users._
-import org.bigbluebutton.core.apps.whiteboard.ClientToServerLatencyTracerMsgHdlr
-import org.bigbluebutton.core.domain._
-import org.bigbluebutton.core.util.TimeUtil
 import org.bigbluebutton.common2.domain.{ DefaultProps, LockSettingsProps }
+import org.bigbluebutton.common2.msgs
+import org.bigbluebutton.common2.msgs._
 import org.bigbluebutton.core.api._
 import org.bigbluebutton.core.apps._
+import org.bigbluebutton.core.apps.audiocaptions.AudioCaptionsApp2x
+import org.bigbluebutton.core.apps.breakout._
 import org.bigbluebutton.core.apps.caption.CaptionApp2x
 import org.bigbluebutton.core.apps.chat.ChatApp2x
 import org.bigbluebutton.core.apps.externalvideo.ExternalVideoApp2x
-import org.bigbluebutton.core.apps.pads.PadsApp2x
-import org.bigbluebutton.core.apps.screenshare.ScreenshareApp2x
-import org.bigbluebutton.core.apps.audiocaptions.AudioCaptionsApp2x
-import org.bigbluebutton.core.apps.timer.TimerApp2x
-import org.bigbluebutton.core.apps.presentation.PresentationApp2x
-import org.bigbluebutton.core.apps.users.UsersApp2x
-import org.bigbluebutton.core.apps.webcam.WebcamApp2x
-import org.bigbluebutton.core.apps.whiteboard.WhiteboardApp2x
-import org.bigbluebutton.core.bus._
-import org.bigbluebutton.core.models.{ Users2x, VoiceUsers, _ }
-import org.bigbluebutton.core2.{ MeetingStatus2x, Permissions }
-import org.bigbluebutton.core2.message.handlers._
-import org.bigbluebutton.core2.message.handlers.meeting._
-import org.bigbluebutton.common2.msgs._
-import org.bigbluebutton.core.apps.breakout._
-import org.bigbluebutton.core.apps.polls._
-import org.bigbluebutton.core.apps.voice._
-import org.apache.pekko.actor.Props
-import org.apache.pekko.actor.OneForOneStrategy
-import org.bigbluebutton.common2.msgs
-
-import scala.concurrent.duration._
+import org.bigbluebutton.core.apps.groupchats.GroupChatHdlrs
 import org.bigbluebutton.core.apps.layout.LayoutApp2x
 import org.bigbluebutton.core.apps.meeting.{ SyncGetMeetingInfoRespMsgHdlr, ValidateConnAuthTokenSysMsgHdlr }
+import org.bigbluebutton.core.apps.pads.PadsApp2x
 import org.bigbluebutton.core.apps.plugin.PluginHdlrs
-import org.bigbluebutton.core.apps.users.ChangeLockSettingsInMeetingCmdMsgHdlr
+import org.bigbluebutton.core.apps.polls._
+import org.bigbluebutton.core.apps.presentation.PresentationApp2x
+import org.bigbluebutton.core.apps.presentationpod._
+import org.bigbluebutton.core.apps.screenshare.ScreenshareApp2x
+import org.bigbluebutton.core.apps.timer.TimerApp2x
+import org.bigbluebutton.core.apps.users._
+import org.bigbluebutton.core.apps.voice._
+import org.bigbluebutton.core.apps.webcam.WebcamApp2x
+import org.bigbluebutton.core.apps.whiteboard.{ ClientToServerLatencyTracerMsgHdlr, WhiteboardApp2x }
+import org.bigbluebutton.core.bus._
 import org.bigbluebutton.core.db.UserStateDAO
+import org.bigbluebutton.core.domain._
 import org.bigbluebutton.core.models.VoiceUsers.{ findAllFreeswitchCallers, findAllListenOnlyVoiceUsers }
 import org.bigbluebutton.core.models.Webcams.findAll
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.util.TimeUtil
 import org.bigbluebutton.core2.MeetingStatus2x.hasAuthedUserJoined
+import org.bigbluebutton.core2.message.handlers._
+import org.bigbluebutton.core2.message.handlers.meeting._
 import org.bigbluebutton.core2.message.senders.{ MsgBuilder, Sender }
+import org.bigbluebutton.core2.{ MeetingStatus2x, Permissions }
 
+import java.io.{ PrintWriter, StringWriter }
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 object MeetingActor {
   def props(
@@ -96,7 +91,9 @@ class MeetingActor(
   with SyncGetMeetingInfoRespMsgHdlr
   with ClientToServerLatencyTracerMsgHdlr
   with ValidateConnAuthTokenSysMsgHdlr
-  with UserActivitySignCmdMsgHdlr {
+  with UserActivitySignCmdMsgHdlr
+
+  with GetMeetingInfoMsgHdlr {
 
   object CheckVoiceRecordingInternalMsg
   object SyncVoiceUserStatusInternalMsg
@@ -266,6 +263,9 @@ class MeetingActor(
     // internal messages
     case msg: MonitorNumberOfUsersInternalMsg     => handleMonitorNumberOfUsers(msg)
     case msg: SetPresenterInDefaultPodInternalMsg => state = presentationPodsApp.handleSetPresenterInDefaultPodInternalMsg(msg, state, liveMeeting, msgBus)
+
+    // Internal gRPC messages
+    case msg: GetMeetingInfo                      => sender() ! handleGetMeetingInfo()
 
     case msg: ExtendMeetingDuration               => handleExtendMeetingDuration(msg)
     case msg: SendTimeRemainingAuditInternalMsg =>
@@ -653,7 +653,7 @@ class MeetingActor(
     val isMeetingRecorded = MeetingStatus2x.isRecording(liveMeeting.status)
 
     // TODO: Placeholder values as required values not available
-    val screenshareStream: ScreenshareStream = ScreenshareStream(new User("", ""), List())
+    val screenshareStream: ScreenshareStream = ScreenshareStream(new org.bigbluebutton.common2.msgs.User("", ""), List())
     val screenshare: Screenshare = Screenshare(screenshareStream)
 
     val listOfUsers: List[UserState] = Users2x.findAll(liveMeeting.users2x).toList
@@ -681,7 +681,7 @@ class MeetingActor(
     val numOfLiveWebcams: Int = liveWebcams.length
     val broadcasts: List[Broadcast] = liveWebcams.map(webcam => Broadcast(
       webcam.streamId,
-      User(webcam.userId, resolveUserName(webcam.userId)), 0L
+      org.bigbluebutton.common2.msgs.User(webcam.userId, resolveUserName(webcam.userId)), 0L
     )).toList
     val subscribers: Set[String] = liveWebcams.flatMap(_.subscribers).toSet
     val webcamStream: msgs.WebcamStream = msgs.WebcamStream(broadcasts, subscribers)
@@ -696,14 +696,14 @@ class MeetingActor(
     val numOfListenOnlyUsers: Int = listenOnlyUsers.length
     val listenOnlyAudio = ListenOnlyAudio(
       numOfListenOnlyUsers,
-      listenOnlyUsers.map(voiceUserState => User(voiceUserState.voiceUserId, resolveUserName(voiceUserState.intId))).toList
+      listenOnlyUsers.map(voiceUserState => org.bigbluebutton.common2.msgs.User(voiceUserState.voiceUserId, resolveUserName(voiceUserState.intId))).toList
     )
 
     val freeswitchUsers: Vector[VoiceUserState] = findAllFreeswitchCallers(liveMeeting.voiceUsers)
     val numOfFreeswitchUsers: Int = freeswitchUsers.length
     val twoWayAudio = TwoWayAudio(
       numOfFreeswitchUsers,
-      freeswitchUsers.map(voiceUserState => User(voiceUserState.voiceUserId, resolveUserName(voiceUserState.intId))).toList
+      freeswitchUsers.map(voiceUserState => org.bigbluebutton.common2.msgs.User(voiceUserState.voiceUserId, resolveUserName(voiceUserState.intId))).toList
     )
 
     // TODO: Placeholder values
