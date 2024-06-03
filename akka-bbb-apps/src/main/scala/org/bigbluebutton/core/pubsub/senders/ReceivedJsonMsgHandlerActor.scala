@@ -170,8 +170,6 @@ class ReceivedJsonMsgHandlerActor(
         routePadMsg[PadUpdatedSysMsg](envelope, jsonNode)
       case PadContentSysMsg.NAME =>
         routePadMsg[PadContentSysMsg](envelope, jsonNode)
-      case PadPatchSysMsg.NAME =>
-        routePadMsg[PadPatchSysMsg](envelope, jsonNode)
       case PadUpdatePubMsg.NAME =>
         routeGenericMsg[PadUpdatePubMsg](envelope, jsonNode)
       case PadPinnedReqMsg.NAME =>
@@ -339,14 +337,6 @@ class ReceivedJsonMsgHandlerActor(
         routeGenericMsg[CreateNewPresentationPodPubMsg](envelope, jsonNode)
       case RemovePresentationPodPubMsg.NAME =>
         routeGenericMsg[RemovePresentationPodPubMsg](envelope, jsonNode)
-
-      // Caption
-      case EditCaptionHistoryPubMsg.NAME =>
-        routeGenericMsg[EditCaptionHistoryPubMsg](envelope, jsonNode)
-      case UpdateCaptionOwnerPubMsg.NAME =>
-        routeGenericMsg[UpdateCaptionOwnerPubMsg](envelope, jsonNode)
-      case SendCaptionHistoryReqMsg.NAME =>
-        routeGenericMsg[SendCaptionHistoryReqMsg](envelope, jsonNode)
 
       // Chat
       case GetChatHistoryReqMsg.NAME =>
