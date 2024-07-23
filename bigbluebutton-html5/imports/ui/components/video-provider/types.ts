@@ -15,6 +15,7 @@ export type User = {
   raiseHand: boolean;
   isModerator: boolean;
   reactionEmoji: string;
+  mobile: boolean;
 }
 
 interface GridVoice {
