@@ -151,6 +151,17 @@ const useBroadcastContentType = () => {
   return data[0].contentType;
 };
 
+// This hook is used to check if the WebRTC content bridge (ie.: screensharing
+// or camera as content) is broadcasting. It uses both the local and remote
+// states - for remote-only checks, use useIsScreenGloballyBroadcasting or
+// useIsCameraAsContentGloballyBroadcasting.
+const useIsRTCContentBridgeBroadcasting = () => {
+  const isScreenBroadcasting = useIsScreenBroadcasting();
+  const isCameraAsContentBroadcasting = useIsCameraAsContentBroadcasting();
+
+  return isScreenBroadcasting || isCameraAsContentBroadcasting;
+}
+
 const screenshareHasEnded = () => {
   if (isSharingVar()) {
     setIsSharing(false);
@@ -379,4 +390,5 @@ export {
   useIsCameraAsContentBroadcasting,
   useScreenshareHasAudio,
   useBroadcastContentType,
+  useIsRTCContentBridgeBroadcasting,
 };
