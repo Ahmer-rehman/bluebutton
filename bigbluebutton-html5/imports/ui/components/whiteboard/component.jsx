@@ -922,62 +922,56 @@ const Whiteboard = React.memo(function Whiteboard(props) {
     let timeoutId = null;
 
     if (
-      tlEditor &&
+      tlEditorRef.current &&
       curPageIdRef.current &&
-      currentPresentationPage &&
-      isPresenter &&
+      currentPresentationPageRef.current &&
+      isPresenterRef.current &&
       isWheelZoomRef.current === false
     ) {
       const zoomLevelForReset =
         initialZoomRef.current ||
         calculateZoomValue(
-          currentPresentationPage.scaledWidth,
-          currentPresentationPage.scaledHeight
+          currentPresentationPageRef.current.scaledWidth,
+          currentPresentationPageRef.current.scaledHeight
         );
 
       const zoomCamera =
-        zoomValue === HUNDRED_PERCENT
+        zoomValueRef.current === HUNDRED_PERCENT
           ? zoomLevelForReset
-          : (zoomLevelForReset * zoomValue) / HUNDRED_PERCENT;
+          : (zoomLevelForReset * zoomValueRef.current) / HUNDRED_PERCENT;
       const camera = tlEditorRef.current.getCamera();
 
+      // Calculate the new camera position to center the zoom on the visible portion
       const nextCamera = {
         x:
-          zoomValue === HUNDRED_PERCENT
-            ? 0
-            : camera.x +
-              ((camera.x + tlEditorRef.current.getViewportPageBounds().w / 2) /
-                zoomCamera -
-                camera.x),
+          camera.x +
+          (tlEditorRef.current.getViewportPageBounds().w / 2 / zoomCamera -
+           tlEditorRef.current.getViewportPageBounds().w / 2 / camera.z),
         y:
-          zoomValue === HUNDRED_PERCENT
-            ? 0
-            : camera.y +
-              ((camera.y + tlEditorRef.current.getViewportPageBounds().h / 2) /
-                zoomCamera -
-                camera.y),
+          camera.y +
+          (tlEditorRef.current.getViewportPageBounds().h / 2 / zoomCamera -
+           tlEditorRef.current.getViewportPageBounds().h / 2 / camera.z),
         z: zoomCamera,
       };
 
       if (
-        zoomValue !== prevZoomValueRef.current ||
-        zoomValue === HUNDRED_PERCENT
+        zoomValueRef.current !== prevZoomValueRef.current ||
+        zoomValueRef.current === HUNDRED_PERCENT
       ) {
-        tlEditor.setCamera(nextCamera, false);
+        tlEditorRef.current.setCamera(nextCamera, { duration: 175 });
 
         timeoutId = setTimeout(() => {
           if (zoomValue === HUNDRED_PERCENT) {
-            zoomChanger(HUNDRED_PERCENT);
             zoomSlide(HUNDRED_PERCENT, HUNDRED_PERCENT, 0, 0);
           } else {
             // Recalculate viewed region width and height for zoomSlide call
             let viewedRegionW = SlideCalcUtil.calcViewedRegionWidth(
               tlEditorRef.current.getViewportPageBounds().w,
-              currentPresentationPage.scaledWidth
+              currentPresentationPageRef.current.scaledWidth
             );
             let viewedRegionH = SlideCalcUtil.calcViewedRegionHeight(
               tlEditorRef.current.getViewportPageBounds().h,
-              currentPresentationPage.scaledHeight
+              currentPresentationPageRef.current.scaledHeight
             );
 
             zoomSlide(viewedRegionW, viewedRegionH, nextCamera.x, nextCamera.y);
