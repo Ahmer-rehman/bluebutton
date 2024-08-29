@@ -231,10 +231,24 @@ const AppContainer = (props) => {
     return enforceLayout && layoutTypes.includes(enforceLayout) ? enforceLayout : null;
   };
 
+  const hidePresentationOnJoin = getFromUserSettings('bbb_hide_presentation_on_join', LAYOUT_CONFIG.hidePresentationOnJoin);
+
+  // Ref to manage whether we are still in the initial load phase
+  const isInitialLoadRef = React.useRef(true);
+  const INIT_LOAD_DELAY = 1500;
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, INIT_LOAD_DELAY);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   const shouldShowScreenshare = (viewScreenshare || isPresenter)
     && (currentMeeting?.componentsFlags?.hasScreenshare
       || currentMeeting?.componentsFlags?.hasCameraAsContent);
-  const shouldShowPresentation = (!shouldShowScreenshare && !isSharedNotesPinned
+  let showPresentation = (!shouldShowScreenshare && !isSharedNotesPinned
     && !shouldShowExternalVideo && !shouldShowGenericMainContent
     && (presentationIsOpen || presentationRestoreOnUpdate)) && isPresentationEnabled;
 
@@ -257,12 +271,16 @@ const AppContainer = (props) => {
 
   if (!currentUserData) return null;
 
+  // If still in the initial load phase, hide the presentation
+  const shouldShowPresentation = isInitialLoadRef.current && hidePresentationOnJoin
+    ? false
+    : showPresentation;
+
   return currentUser?.userId
     ? (
       <App
         {...{
           presentationRestoreOnUpdate,
-          hidePresentationOnJoin: getFromUserSettings('bbb_hide_presentation_on_join', LAYOUT_CONFIG.hidePresentationOnJoin),
           hideActionsBar: getFromUserSettings('bbb_hide_actions_bar', false),
           hideNavBar: getFromUserSettings('bbb_hide_nav_bar', false),
           customStyle: getFromUserSettings('bbb_custom_style', false),
