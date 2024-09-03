@@ -22,18 +22,10 @@ const { ShapeOptions } = require('./shapeOptions');
 
 const hidePresentationToast = encodeCustomParams(PARAMETER_HIDE_PRESENTATION_TOAST);
 
-test.describe.parallel('Whiteboard', { tag: '@ci' }, () => {
-  test('Draw rectangle', { tag: '@flaky' }, async ({ browser, page }) => {
-    const draw = new Draw(browser, page);
-    await draw.init(true, true);
-    await draw.test();
-  });
-});
-
-test.describe.parallel('Whiteboard tools - visual regression', () => {
+test.describe.parallel('Whiteboard tools', { tag: '@ci' }, () => {
   test.beforeEach(({ browserName }) => {
     test.skip(browserName !== 'chromium',
-      'Drawing visual regression tests are enabled for Chromium');
+      'Drawing visual regression tests are enabled only for Chromium');
   });
 
   test('Draw rectangle', async ({ browser, context, page }) => {
@@ -78,14 +70,14 @@ test.describe.parallel('Whiteboard tools - visual regression', () => {
     await drawText.test();
   });
 
-  test('Create sticky note', async ({ browser, context, page }) => {
+  test('Create sticky note @flaky', async ({ browser, context, page }) => {
     const drawStickyNote = new DrawStickyNote(browser, context);
     await drawStickyNote.initModPage(page, true, { customMeetingId: 'draw_sticky_meeting', joinParameter: hidePresentationToast });
     await drawStickyNote.initUserPage(true, context, { joinParameter: hidePresentationToast });
     await drawStickyNote.test();
   });
 
-  test('Pan', async ({ browser, context, page }) => {
+  test('Pan @flaky', async ({ browser, context, page }) => {
     const pan = new Pan(browser, context);
     await pan.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
     await pan.initUserPage(true, context, { joinParameter: hidePresentationToast });
@@ -106,7 +98,37 @@ test.describe.parallel('Whiteboard tools - visual regression', () => {
     await drawArrow.test();
   });
 
-  test('Delete drawing', async ({ browser, context, page }) => {
+  test.describe.parallel('Change Shapes Styles', async () => {
+    test('Change color', async ({ browser, context, page }) => {
+      const changeColor = new ChangeStyles(browser, context);
+      await changeColor.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
+      await changeColor.initUserPage(true, context, { joinParameter: hidePresentationToast });
+      await changeColor.changingColor();
+    });
+  
+    test('Fill drawing', async ({ browser, context, page }) => {
+      const fillDrawing = new ChangeStyles(browser, context);
+      await fillDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
+      await fillDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
+      await fillDrawing.fillDrawing();
+    });
+  
+    test('Dash drawing', async ({ browser, context, page }) => {
+      const dashDrawing = new ChangeStyles(browser, context);
+      await dashDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
+      await dashDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
+      await dashDrawing.dashDrawing();
+    });
+  
+    test('Size drawing', async ({ browser, context, page }) => {
+      const sizeDrawing = new ChangeStyles(browser, context);
+      await sizeDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
+      await sizeDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
+      await sizeDrawing.sizeDrawing();
+    });
+  });
+
+  test('Delete drawing @flaky', async ({ browser, context, page }) => {
     const deleteDrawing = new DeleteDrawing(browser, context);
     await deleteDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
     await deleteDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
@@ -127,33 +149,7 @@ test.describe.parallel('Whiteboard tools - visual regression', () => {
     await redoDrawing.test();
   });
 
-  test('Change color', async ({ browser, context, page }) => {
-    const changeColor = new ChangeStyles(browser, context);
-    await changeColor.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
-    await changeColor.initUserPage(true, context, { joinParameter: hidePresentationToast });
-    await changeColor.changingColor();
-  });
-
-  test('Fill drawing', async ({ browser, context, page }) => {
-    const fillDrawing = new ChangeStyles(browser, context);
-    await fillDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
-    await fillDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
-    await fillDrawing.fillDrawing();
-  });
-
-  test('Dash drawing', async ({ browser, context, page }) => {
-    const dashDrawing = new ChangeStyles(browser, context);
-    await dashDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
-    await dashDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
-    await dashDrawing.dashDrawing();
-  });
-
-  test('Size drawing', async ({ browser, context, page }) => {
-    const sizeDrawing = new ChangeStyles(browser, context);
-    await sizeDrawing.initModPage(page, true, { customMeetingId: 'draw_line_meeting', joinParameter: hidePresentationToast });
-    await sizeDrawing.initUserPage(true, context, { joinParameter: hidePresentationToast });
-    await sizeDrawing.sizeDrawing();
-  });
+  
 
   test('Real time text typing', async ({ browser, context, page }) => {
     const realTimeText = new RealTimeText(browser, context);
@@ -162,7 +158,7 @@ test.describe.parallel('Whiteboard tools - visual regression', () => {
     await realTimeText.realTimeTextTyping();
   });
 
-  test.describe.parallel('Shape Options', () => {
+  test.describe.parallel('Shape Options @flaky', () => {
     test('Duplicate', async ({ browser, context, page }) => {
       const shapeOptions = new ShapeOptions(browser, context);
       await shapeOptions.initModPage(page, true);
